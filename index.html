@@ -17,7 +17,7 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            --mask-color: rgba(255, 255, 255, 0.8);
+            --mask-color: rgba(255, 255, 255, 0.85);
         }
 
         body {
@@ -58,22 +58,17 @@
 
         #imagePreview {
             position: absolute;
-            transform-origin: center center;
+            transform-origin: 0 0; /* Important for coordinate calc */
             will-change: transform;
             display: none;
         }
 
-        /* Mask Overlay */
         .mask-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 10;
-            transition: background 0.3s;
-        }
-        /* Default Circle Mask */
-        .mask-circle {
-            background: radial-gradient(circle, transparent 48%, var(--mask-color) 48.5%);
+            transition: background 0.2s;
         }
 
         .controls-card {
@@ -94,7 +89,6 @@
             margin-bottom: 12px;
         }
 
-        /* SNS Selector Buttons */
         .sns-selector {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -106,10 +100,11 @@
             border: 2px solid var(--border);
             padding: 10px;
             border-radius: 12px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 800;
             cursor: pointer;
             transition: all 0.2s;
+            color: var(--main);
         }
         .sns-btn.active {
             background: var(--main);
@@ -184,7 +179,7 @@
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Check your icon's safe area.</p>
+    <p class="subtitle">Drag & zoom to check your safe area.</p>
 
     <div class="file-input-wrapper">
         <button class="file-input-btn">Upload Photo</button>
@@ -193,12 +188,12 @@
 
     <div class="preview-wrapper" id="dropZone">
         <img id="imagePreview" src="">
-        <div id="maskOverlay" class="mask-overlay mask-circle"></div>
+        <div id="maskOverlay" class="mask-overlay"></div>
         <p id="placeholderText">Drop or Select Photo</p>
     </div>
 
     <div class="controls-card">
-        <span class="control-label">Platform Mask</span>
+        <span class="control-label">Mask Type</span>
         <div class="sns-selector">
             <button class="sns-btn active" onclick="setMask('circle', this)">Circle (General)</button>
             <button class="sns-btn" onclick="setMask('x', this)">X / Twitter</button>
@@ -207,7 +202,7 @@
         </div>
 
         <span class="control-label">Zoom</span>
-        <input type="range" id="zoomScale" min="0.1" max="3" step="0.01" value="1">
+        <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
     </div>
 
     <div class="footer-btns">
@@ -246,7 +241,9 @@
     let isDragging = false;
     let startX, startY;
 
-    // Load Image and Auto-fit
+    // Set Initial Mask
+    setMask('circle', document.querySelector('.sns-btn.active'));
+
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) loadImage(file);
@@ -260,7 +257,11 @@
                 const wrapperRect = dropZone.getBoundingClientRect();
                 const containerSize = wrapperRect.width;
                 
-                // Calculate scale to fit "Short Side" (Aspect Fill style)
+                // Reset states
+                scale = 1;
+                zoomScale.value = 1;
+                
+                // Calculate scale to fit "Short Side"
                 const scaleW = containerSize / img.width;
                 const scaleH = containerSize / img.height;
                 baseScale = Math.max(scaleW, scaleH);
@@ -269,12 +270,10 @@
                 imagePreview.style.display = 'block';
                 placeholderText.style.display = 'none';
                 
-                // Center image
-                posX = (containerSize - img.width * baseScale) / 2;
-                posY = (containerSize - img.height * baseScale) / 2;
+                // Initial Center Position
+                posX = (containerSize - (img.width * baseScale)) / 2;
+                posY = (containerSize - (img.height * baseScale)) / 2;
                 
-                scale = 1;
-                zoomScale.value = 1;
                 updateTransform();
             };
             img.src = e.target.result;
@@ -285,10 +284,8 @@
     // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
-
     window.addEventListener('mousemove', drag);
     window.addEventListener('touchmove', drag, {passive: false});
-
     window.addEventListener('mouseup', endDrag);
     window.addEventListener('touchend', endDrag);
 
@@ -314,31 +311,29 @@
     function endDrag() { isDragging = false; }
 
     zoomScale.addEventListener('input', (e) => {
-        scale = e.target.value;
+        scale = parseFloat(e.target.value);
         updateTransform();
     });
 
     function updateTransform() {
         const currentScale = baseScale * scale;
-        // Apply transform from top-left (0,0) of the image
         imagePreview.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
     }
 
-    // Mask Switching
     function setMask(type, btn) {
-        // Update Buttons
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // Update Mask Gradient (Simulating different safe areas)
-        // Note: circle sizes are slightly varied to represent safe zones
-        if (type === 'circle') maskOverlay.style.background = 'radial-gradient(circle, transparent 48%, var(--mask-color) 48.5%)';
-        if (type === 'x') maskOverlay.style.background = 'radial-gradient(circle, transparent 46%, var(--mask-color) 46.5%)';
-        if (type === 'ig') maskOverlay.style.background = 'radial-gradient(circle, transparent 47%, var(--mask-color) 47.5%)';
-        if (type === 'yt') maskOverlay.style.background = 'radial-gradient(circle, transparent 45%, var(--mask-color) 45.5%)';
+        // Professional Safe Area Ratios
+        let radius = "48%"; // Standard
+        if (type === 'x') radius = "46.5%";
+        if (type === 'ig') radius = "47.5%";
+        if (type === 'yt') radius = "45.5%";
+
+        maskOverlay.style.background = `radial-gradient(circle, transparent ${radius}, var(--mask-color) ${radius})`;
     }
 
-    // Drag and Drop
+    // Drag & Drop UI feedback
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
     dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
     dropZone.addEventListener('drop', (e) => {
