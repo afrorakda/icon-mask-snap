@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Icon Mask Snap - Fridge Combo</title>
+    <title>Icon Mask Snap</title>
     
     <link rel="icon" href="image_93.png">
     <link rel="apple-touch-icon" href="image_93.png">
@@ -12,11 +12,12 @@
         :root {
             --main: #333;
             --bg: #fff;
-            --accent: #ccc;
+            --accent: #eee;
+            --border: #ccc;
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            --mask-color: rgba(255, 255, 255, 0.85);
+            --mask-color: rgba(255, 255, 255, 0.8);
         }
 
         body {
@@ -41,54 +42,48 @@
         h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
         .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
 
-        /* Preview Canvas Area */
+        /* Preview Canvas */
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
-            background: #eee;
+            background: #f0f0f0;
             border-radius: var(--radius);
             position: relative;
             overflow: hidden;
-            border: 2px solid var(--accent);
+            border: 2px solid var(--border);
             cursor: move;
-            touch-action: none; /* For smooth drag on mobile */
-            margin-bottom: 20px;
+            touch-action: none;
+            margin-bottom: 25px;
         }
 
         #imagePreview {
             position: absolute;
-            top: 0;
-            left: 0;
             transform-origin: center center;
-            pointer-events: none;
+            will-change: transform;
+            display: none;
         }
 
-        /* The Mask Overlay */
+        /* Mask Overlay */
         .mask-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Let clicks pass through to drag */
-            background: radial-gradient(circle, transparent 50%, var(--mask-color) 50%);
-            border-radius: var(--radius);
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
             z-index: 10;
+            transition: background 0.3s;
+        }
+        /* Default Circle Mask */
+        .mask-circle {
+            background: radial-gradient(circle, transparent 48%, var(--mask-color) 48.5%);
         }
 
-        /* Controls */
         .controls-card {
             background: var(--input-bg);
             padding: 20px;
             border-radius: var(--radius);
-            border: 1px solid var(--accent);
+            border: 1px solid var(--border);
             margin-bottom: 25px;
+            text-align: left;
         }
-
-        .control-row {
-            margin-bottom: 15px;
-        }
-        .control-row:last-child { margin-bottom: 0; }
 
         .control-label {
             display: block;
@@ -96,35 +91,68 @@
             font-weight: 800;
             color: var(--text-gray);
             text-transform: uppercase;
-            margin-bottom: 10px;
-            text-align: left;
+            margin-bottom: 12px;
+        }
+
+        /* SNS Selector Buttons */
+        .sns-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .sns-btn {
+            background: #fff;
+            border: 2px solid var(--border);
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sns-btn.active {
+            background: var(--main);
+            color: #fff;
+            border-color: var(--main);
         }
 
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
-            cursor: pointer;
+            margin-bottom: 5px;
         }
 
         .file-input-wrapper {
             position: relative;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         .file-input-btn {
             width: 100%;
-            padding: 15px;
+            padding: 18px;
             background: var(--main);
             color: #fff;
             border: none;
             border-radius: var(--radius);
             font-weight: 800;
-            font-size: 1rem;
+            font-size: 1.1rem;
             cursor: pointer;
         }
         input[type="file"] {
             position: absolute;
             left: 0; top: 0; width: 100%; height: 100%;
             opacity: 0; cursor: pointer;
+        }
+
+        #placeholderText {
+            position: absolute;
+            width: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #bbb;
+            font-weight: 700;
+            pointer-events: none;
         }
 
         footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
@@ -156,24 +184,30 @@
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Drag to check your profile safe area.</p>
+    <p class="subtitle">Check your icon's safe area.</p>
 
     <div class="file-input-wrapper">
-        <button class="file-input-btn">Upload Image</button>
+        <button class="file-input-btn">Upload Photo</button>
         <input type="file" id="fileInput" accept="image/*">
     </div>
 
     <div class="preview-wrapper" id="dropZone">
-        <img id="imagePreview" src="" style="display:none;">
-        <div class="mask-overlay"></div>
-        <p id="placeholderText" style="position: absolute; width: 100%; top: 45%; color: #aaa; font-weight: 700;">Drop or Upload</p>
+        <img id="imagePreview" src="">
+        <div id="maskOverlay" class="mask-overlay mask-circle"></div>
+        <p id="placeholderText">Drop or Select Photo</p>
     </div>
 
     <div class="controls-card">
-        <div class="control-row">
-            <span class="control-label">Zoom Scale</span>
-            <input type="range" id="zoomScale" min="0.1" max="3" step="0.01" value="1">
+        <span class="control-label">Platform Mask</span>
+        <div class="sns-selector">
+            <button class="sns-btn active" onclick="setMask('circle', this)">Circle (General)</button>
+            <button class="sns-btn" onclick="setMask('x', this)">X / Twitter</button>
+            <button class="sns-btn" onclick="setMask('ig', this)">Instagram</button>
+            <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
+
+        <span class="control-label">Zoom</span>
+        <input type="range" id="zoomScale" min="0.1" max="3" step="0.01" value="1">
     </div>
 
     <div class="footer-btns">
@@ -203,14 +237,16 @@
     const placeholderText = document.getElementById('placeholderText');
     const zoomScale = document.getElementById('zoomScale');
     const dropZone = document.getElementById('dropZone');
+    const maskOverlay = document.getElementById('maskOverlay');
 
     let scale = 1;
+    let baseScale = 1;
     let posX = 0;
     let posY = 0;
     let isDragging = false;
     let startX, startY;
 
-    // Handle File Upload
+    // Load Image and Auto-fit
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) loadImage(file);
@@ -219,28 +255,45 @@
     function loadImage(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            imagePreview.src = e.target.result;
-            imagePreview.style.display = 'block';
-            placeholderText.style.display = 'none';
-            // Reset position
-            posX = 0; posY = 0; scale = 1;
-            zoomScale.value = 1;
-            updateTransform();
+            const img = new Image();
+            img.onload = () => {
+                const wrapperRect = dropZone.getBoundingClientRect();
+                const containerSize = wrapperRect.width;
+                
+                // Calculate scale to fit "Short Side" (Aspect Fill style)
+                const scaleW = containerSize / img.width;
+                const scaleH = containerSize / img.height;
+                baseScale = Math.max(scaleW, scaleH);
+                
+                imagePreview.src = img.src;
+                imagePreview.style.display = 'block';
+                placeholderText.style.display = 'none';
+                
+                // Center image
+                posX = (containerSize - img.width * baseScale) / 2;
+                posY = (containerSize - img.height * baseScale) / 2;
+                
+                scale = 1;
+                zoomScale.value = 1;
+                updateTransform();
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
 
     // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
-    dropZone.addEventListener('touchstart', startDrag);
+    dropZone.addEventListener('touchstart', startDrag, {passive: false});
 
     window.addEventListener('mousemove', drag);
-    window.addEventListener('touchmove', drag);
+    window.addEventListener('touchmove', drag, {passive: false});
 
     window.addEventListener('mouseup', endDrag);
     window.addEventListener('touchend', endDrag);
 
     function startDrag(e) {
+        if (!imagePreview.src) return;
         isDragging = true;
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
@@ -250,7 +303,7 @@
 
     function drag(e) {
         if (!isDragging) return;
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
         posX = clientX - startX;
@@ -258,9 +311,7 @@
         updateTransform();
     }
 
-    function endDrag() {
-        isDragging = false;
-    }
+    function endDrag() { isDragging = false; }
 
     zoomScale.addEventListener('input', (e) => {
         scale = e.target.value;
@@ -268,22 +319,31 @@
     });
 
     function updateTransform() {
-        imagePreview.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+        const currentScale = baseScale * scale;
+        // Apply transform from top-left (0,0) of the image
+        imagePreview.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
+    }
+
+    // Mask Switching
+    function setMask(type, btn) {
+        // Update Buttons
+        document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update Mask Gradient (Simulating different safe areas)
+        // Note: circle sizes are slightly varied to represent safe zones
+        if (type === 'circle') maskOverlay.style.background = 'radial-gradient(circle, transparent 48%, var(--mask-color) 48.5%)';
+        if (type === 'x') maskOverlay.style.background = 'radial-gradient(circle, transparent 46%, var(--mask-color) 46.5%)';
+        if (type === 'ig') maskOverlay.style.background = 'radial-gradient(circle, transparent 47%, var(--mask-color) 47.5%)';
+        if (type === 'yt') maskOverlay.style.background = 'radial-gradient(circle, transparent 45%, var(--mask-color) 45.5%)';
     }
 
     // Drag and Drop
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--main)';
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.style.borderColor = 'var(--accent)';
-    });
-
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.style.borderColor = 'var(--accent)';
+        dropZone.style.borderColor = 'var(--border)';
         const file = e.dataTransfer.files[0];
         if (file) loadImage(file);
     });
