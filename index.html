@@ -17,6 +17,7 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
+            --success: #2ecc71; /* クロップ保存用グリーン */
             --mask-color-empty: rgba(255, 255, 255, 0.85);
             --mask-color-active: rgba(100, 100, 100, 0.7);
         }
@@ -43,7 +44,6 @@
         h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
         .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
 
-        /* Preview Viewer */
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -57,11 +57,7 @@
             margin-bottom: 25px;
             transition: border-color 0.3s, box-shadow 0.3s;
         }
-        /* 読み込み時の視覚効果 */
-        .preview-wrapper.loaded {
-            border-color: var(--main);
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
+        .preview-wrapper.loaded { border-color: var(--main); box-shadow: 0 0 15px rgba(0,0,0,0.1); }
         .preview-wrapper.has-image { cursor: move; }
 
         #imagePreview {
@@ -147,8 +143,8 @@
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
-            margin-bottom: 15px;
             cursor: pointer;
+            margin-bottom: 25px;
         }
 
         .change-btn {
@@ -160,6 +156,20 @@
             border-radius: 12px;
             font-weight: 800;
             font-size: 0.9rem;
+            cursor: pointer;
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--success);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 800;
+            font-size: 1.1rem;
             cursor: pointer;
             display: none;
         }
@@ -218,6 +228,12 @@
     </div>
 
     <div class="controls-card">
+        <div class="zoom-header">
+            <span class="control-label" style="margin:0;">Zoom Control</span>
+            <button class="reset-btn" id="resetBtn" onclick="resetView()" style="display:none;">Reset View</button>
+        </div>
+        <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
+
         <span class="control-label">Mask Type</span>
         <div class="sns-selector">
             <button class="sns-btn active" onclick="setMask('circle', this)">Circle</button>
@@ -226,13 +242,8 @@
             <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <div class="zoom-header">
-            <span class="control-label" style="margin:0;">Zoom Control</span>
-            <button class="reset-btn" id="resetBtn" onclick="resetView()" style="display:none;">Reset View</button>
-        </div>
-        <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
-
         <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
+        <button id="downloadBtn" class="download-btn" onclick="downloadCropped()">DOWNLOAD CROPPED ICON</button>
     </div>
 
     <div class="footer-btns">
@@ -265,6 +276,7 @@
     const maskOverlay = document.getElementById('maskOverlay');
     const changeBtn = document.getElementById('changeBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
 
     let scale = 1;
     let baseScale = 1;
@@ -272,7 +284,7 @@
     let dragY = 0;
     let isDragging = false;
     let startX, startY;
-    let currentMaskType = 'circle';
+    let originalImageWidth, originalImageHeight;
 
     function triggerUpload() { fileInput.click(); }
 
@@ -288,24 +300,24 @@
             img.onload = () => {
                 const containerSize = dropZone.offsetWidth;
                 
-                // Reset view states
                 resetStates();
                 
-                // Speed optimization: Immediate rendering intent
                 const scaleW = containerSize / img.width;
                 const scaleH = containerSize / img.height;
                 baseScale = Math.max(scaleW, scaleH);
+                
+                originalImageWidth = img.width;
+                originalImageHeight = img.height;
                 
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
                 placeholderText.style.opacity = '0';
                 changeBtn.style.display = 'block';
                 resetBtn.style.display = 'block';
+                downloadBtn.style.display = 'block';
                 dropZone.classList.add('has-image', 'loaded');
                 
-                // Trigger flash effect
                 setTimeout(() => dropZone.classList.remove('loaded'), 500);
-                
                 updateTransform();
             };
             img.src = e.target.result;
@@ -313,19 +325,10 @@
         reader.readAsDataURL(file);
     }
 
-    function resetStates() {
-        scale = 1;
-        zoomScale.value = 1;
-        dragX = 0;
-        dragY = 0;
-    }
+    function resetStates() { scale = 1; zoomScale.value = 1; dragX = 0; dragY = 0; }
+    function resetView() { resetStates(); updateTransform(); }
 
-    function resetView() {
-        resetStates();
-        updateTransform();
-    }
-
-    // Drag Logic (High performance)
+    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -349,8 +352,6 @@
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
         dragX = clientX - startX;
         dragY = clientY - startY;
-        
-        // Use RequestAnimationFrame for ultra smooth drag
         requestAnimationFrame(updateTransform);
     }
 
@@ -367,7 +368,6 @@
     }
 
     function setMask(type, btn) {
-        currentMaskType = type;
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -378,6 +378,31 @@
 
         const col = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
         maskOverlay.style.background = `radial-gradient(circle, transparent ${r}, ${col} ${r})`;
+    }
+
+    function downloadCropped() {
+        const canvasSize = 2048; // High resolution square
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        const ctx = canvas.getContext('withDraw');
+
+        const wrapperSize = dropZone.offsetWidth;
+        const displayedWidth = originalImageWidth * baseScale * scale;
+        const displayedHeight = originalImageHeight * baseScale * scale;
+
+        const cropX = (displayedWidth / 2 - wrapperSize / 2 - dragX) * (canvasSize / wrapperSize);
+        const cropY = (displayedHeight / 2 - wrapperSize / 2 - dragY) * (canvasSize / wrapperSize);
+        
+        ctx.drawImage(imagePreview, 
+            -cropX, -cropY, 
+            displayedWidth * (canvasSize / wrapperSize), displayedHeight * (canvasSize / wrapperSize)
+        );
+
+        const link = document.createElement('a');
+        link.download = 'afrorakda-cropped-icon.png';
+        link.href = canvas.toDataURL();
+        link.click();
     }
 
     // Drag & Drop
