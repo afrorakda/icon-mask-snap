@@ -18,7 +18,7 @@
             --radius: 15px;
             --text-gray: #666;
             --mask-color-empty: rgba(255, 255, 255, 0.85);
-            --mask-color-active: rgba(100, 100, 100, 0.7); /* 道具っぽいグレー */
+            --mask-color-active: rgba(100, 100, 100, 0.7);
         }
 
         body {
@@ -43,7 +43,7 @@
         h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
         .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
 
-        /* Preview Canvas = The Main Button */
+        /* Preview Viewer */
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -55,9 +55,14 @@
             cursor: pointer;
             touch-action: none;
             margin-bottom: 25px;
-            transition: border-color 0.2s;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
-        .preview-wrapper.has-image { cursor: move; border-color: var(--main); }
+        /* 読み込み時の視覚効果 */
+        .preview-wrapper.loaded {
+            border-color: var(--main);
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .preview-wrapper.has-image { cursor: move; }
 
         #imagePreview {
             position: absolute;
@@ -66,6 +71,7 @@
             transform-origin: center center;
             will-change: transform;
             display: none;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .mask-overlay {
@@ -77,7 +83,6 @@
             background: radial-gradient(circle, transparent 48%, var(--mask-color-empty) 48.5%);
         }
         .preview-wrapper.has-image .mask-overlay {
-            /* 写真が入ったら暗くする */
             background: radial-gradient(circle, transparent 48%, var(--mask-color-active) 48.5%);
         }
 
@@ -122,13 +127,30 @@
             border-color: var(--main);
         }
 
+        .zoom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .reset-btn {
+            background: var(--accent);
+            border: none;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            cursor: pointer;
+            color: var(--main);
+        }
+
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
             margin-bottom: 15px;
+            cursor: pointer;
         }
 
-        /* Sub Button for Changing Photo */
         .change-btn {
             width: 100%;
             padding: 12px;
@@ -151,7 +173,7 @@
             color: #bbb;
             font-weight: 700;
             pointer-events: none;
-            transition: opacity 0.3s;
+            line-height: 1.4;
         }
 
         footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
@@ -185,7 +207,7 @@
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Tap preview to load photo.</p>
+    <p class="subtitle">Tap preview to verify your icon.</p>
 
     <input type="file" id="fileInput" accept="image/*">
 
@@ -198,13 +220,16 @@
     <div class="controls-card">
         <span class="control-label">Mask Type</span>
         <div class="sns-selector">
-            <button class="sns-btn active" data-type="circle" onclick="setMask('circle', this)">Circle</button>
-            <button class="sns-btn" data-type="x" onclick="setMask('x', this)">X / Twitter</button>
-            <button class="sns-btn" data-type="ig" onclick="setMask('ig', this)">Instagram</button>
-            <button class="sns-btn" data-type="yt" onclick="setMask('yt', this)">YouTube</button>
+            <button class="sns-btn active" onclick="setMask('circle', this)">Circle</button>
+            <button class="sns-btn" onclick="setMask('x', this)">X / Twitter</button>
+            <button class="sns-btn" onclick="setMask('ig', this)">Instagram</button>
+            <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <span class="control-label">Zoom Control</span>
+        <div class="zoom-header">
+            <span class="control-label" style="margin:0;">Zoom Control</span>
+            <button class="reset-btn" id="resetBtn" onclick="resetView()" style="display:none;">Reset View</button>
+        </div>
         <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
 
         <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
@@ -239,6 +264,7 @@
     const dropZone = document.getElementById('dropZone');
     const maskOverlay = document.getElementById('maskOverlay');
     const changeBtn = document.getElementById('changeBtn');
+    const resetBtn = document.getElementById('resetBtn');
 
     let scale = 1;
     let baseScale = 1;
@@ -248,9 +274,7 @@
     let startX, startY;
     let currentMaskType = 'circle';
 
-    function triggerUpload() {
-        fileInput.click();
-    }
+    function triggerUpload() { fileInput.click(); }
 
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -262,14 +286,12 @@
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                const wrapperRect = dropZone.getBoundingClientRect();
-                const containerSize = wrapperRect.width;
+                const containerSize = dropZone.offsetWidth;
                 
-                scale = 1;
-                zoomScale.value = 1;
-                dragX = 0;
-                dragY = 0;
+                // Reset view states
+                resetStates();
                 
+                // Speed optimization: Immediate rendering intent
                 const scaleW = containerSize / img.width;
                 const scaleH = containerSize / img.height;
                 baseScale = Math.max(scaleW, scaleH);
@@ -278,7 +300,11 @@
                 imagePreview.style.display = 'block';
                 placeholderText.style.opacity = '0';
                 changeBtn.style.display = 'block';
-                dropZone.classList.add('has-image');
+                resetBtn.style.display = 'block';
+                dropZone.classList.add('has-image', 'loaded');
+                
+                // Trigger flash effect
+                setTimeout(() => dropZone.classList.remove('loaded'), 500);
                 
                 updateTransform();
             };
@@ -287,7 +313,19 @@
         reader.readAsDataURL(file);
     }
 
-    // Drag Logic
+    function resetStates() {
+        scale = 1;
+        zoomScale.value = 1;
+        dragX = 0;
+        dragY = 0;
+    }
+
+    function resetView() {
+        resetStates();
+        updateTransform();
+    }
+
+    // Drag Logic (High performance)
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -311,7 +349,9 @@
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
         dragX = clientX - startX;
         dragY = clientY - startY;
-        updateTransform();
+        
+        // Use RequestAnimationFrame for ultra smooth drag
+        requestAnimationFrame(updateTransform);
     }
 
     function endDrag() { isDragging = false; }
@@ -331,22 +371,21 @@
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        let radius = "48%"; 
-        if (type === 'x') radius = "46.5%";
-        if (type === 'ig') radius = "47.5%";
-        if (type === 'yt') radius = "45.5%";
+        let r = "48%"; 
+        if (type === 'x') r = "46.5%";
+        if (type === 'ig') r = "47.5%";
+        if (type === 'yt') r = "45.5%";
 
-        // Update the gradient with current radius
-        const color = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
-        maskOverlay.style.background = `radial-gradient(circle, transparent ${radius}, ${color} ${radius})`;
+        const col = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
+        maskOverlay.style.background = `radial-gradient(circle, transparent ${r}, ${col} ${r})`;
     }
 
-    // Drag & Drop Support
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#e8e8e8'; });
-    dropZone.addEventListener('dragleave', () => { dropZone.style.background = '#f0f0f0'; });
+    // Drag & Drop
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.style.background = '#f0f0f0';
+        dropZone.style.borderColor = 'var(--border)';
         const file = e.dataTransfer.files[0];
         if (file) loadImage(file);
     });
