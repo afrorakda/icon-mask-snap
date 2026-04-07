@@ -17,7 +17,7 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            --success: #2ecc71; /* クロップ保存用グリーン */
+            --success: #2ecc71;
             --mask-color-empty: rgba(255, 255, 255, 0.85);
             --mask-color-active: rgba(100, 100, 100, 0.7);
         }
@@ -55,10 +55,9 @@
             cursor: pointer;
             touch-action: none;
             margin-bottom: 25px;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            transition: border-color 0.3s;
         }
-        .preview-wrapper.loaded { border-color: var(--main); box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-        .preview-wrapper.has-image { cursor: move; }
+        .preview-wrapper.has-image { cursor: move; border-color: var(--main); }
 
         #imagePreview {
             position: absolute;
@@ -67,7 +66,6 @@
             transform-origin: center center;
             will-change: transform;
             display: none;
-            image-rendering: -webkit-optimize-contrast;
         }
 
         .mask-overlay {
@@ -143,22 +141,8 @@
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
-            cursor: pointer;
             margin-bottom: 25px;
-        }
-
-        .change-btn {
-            width: 100%;
-            padding: 12px;
-            background: #fff;
-            color: var(--main);
-            border: 2px solid var(--main);
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 0.9rem;
             cursor: pointer;
-            display: none;
-            margin-bottom: 15px;
         }
 
         .download-btn {
@@ -172,6 +156,15 @@
             font-size: 1.1rem;
             cursor: pointer;
             display: none;
+            margin-bottom: 12px;
+        }
+
+        .save-guide {
+            font-size: 0.75rem;
+            color: #888;
+            line-height: 1.5;
+            padding: 0 5px;
+            display: none;
         }
 
         #placeholderText {
@@ -183,7 +176,6 @@
             color: #bbb;
             font-weight: 700;
             pointer-events: none;
-            line-height: 1.4;
         }
 
         footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
@@ -217,14 +209,14 @@
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Tap preview to verify your icon.</p>
+    <p class="subtitle">Tap preview to check your safe area.</p>
 
     <input type="file" id="fileInput" accept="image/*">
 
     <div class="preview-wrapper" id="dropZone" onclick="triggerUpload()">
         <img id="imagePreview" src="">
         <div id="maskOverlay" class="mask-overlay"></div>
-        <p id="placeholderText">Tap to Select Photo<br><span style="font-size:0.8rem; opacity:0.7;">(or Drop here)</span></p>
+        <p id="placeholderText">Tap to Select Photo</p>
     </div>
 
     <div class="controls-card">
@@ -242,8 +234,11 @@
             <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
-        <button id="downloadBtn" class="download-btn" onclick="downloadCropped()">DOWNLOAD CROPPED ICON</button>
+        <button id="downloadBtn" class="download-btn" onclick="downloadCropped()">DOWNLOAD PNG</button>
+        <div id="saveGuide" class="save-guide">
+            🍏 <b>iPhone:</b> Check "Files" app (Downloads).<br>
+            🤖 <b>Android:</b> Check "Downloads" folder.
+        </div>
     </div>
 
     <div class="footer-btns">
@@ -274,9 +269,9 @@
     const zoomScale = document.getElementById('zoomScale');
     const dropZone = document.getElementById('dropZone');
     const maskOverlay = document.getElementById('maskOverlay');
-    const changeBtn = document.getElementById('changeBtn');
     const resetBtn = document.getElementById('resetBtn');
     const downloadBtn = document.getElementById('downloadBtn');
+    const saveGuide = document.getElementById('saveGuide');
 
     let scale = 1;
     let baseScale = 1;
@@ -284,7 +279,7 @@
     let dragY = 0;
     let isDragging = false;
     let startX, startY;
-    let originalImageWidth, originalImageHeight;
+    let originalImg = null;
 
     function triggerUpload() { fileInput.click(); }
 
@@ -298,26 +293,26 @@
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
+                originalImg = img;
                 const containerSize = dropZone.offsetWidth;
                 
-                resetStates();
+                scale = 1;
+                zoomScale.value = 1;
+                dragX = 0;
+                dragY = 0;
                 
                 const scaleW = containerSize / img.width;
                 const scaleH = containerSize / img.height;
                 baseScale = Math.max(scaleW, scaleH);
                 
-                originalImageWidth = img.width;
-                originalImageHeight = img.height;
-                
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
-                placeholderText.style.opacity = '0';
-                changeBtn.style.display = 'block';
+                placeholderText.style.display = 'none';
                 resetBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
-                dropZone.classList.add('has-image', 'loaded');
+                saveGuide.style.display = 'block';
+                dropZone.classList.add('has-image');
                 
-                setTimeout(() => dropZone.classList.remove('loaded'), 500);
                 updateTransform();
             };
             img.src = e.target.result;
@@ -325,10 +320,14 @@
         reader.readAsDataURL(file);
     }
 
-    function resetStates() { scale = 1; zoomScale.value = 1; dragX = 0; dragY = 0; }
-    function resetView() { resetStates(); updateTransform(); }
+    function resetView() {
+        scale = 1;
+        zoomScale.value = 1;
+        dragX = 0;
+        dragY = 0;
+        updateTransform();
+    }
 
-    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -381,39 +380,37 @@
     }
 
     function downloadCropped() {
-        const canvasSize = 2048; // High resolution square
-        const canvas = document.createElement('canvas');
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
-        const ctx = canvas.getContext('withDraw');
-
-        const wrapperSize = dropZone.offsetWidth;
-        const displayedWidth = originalImageWidth * baseScale * scale;
-        const displayedHeight = originalImageHeight * baseScale * scale;
-
-        const cropX = (displayedWidth / 2 - wrapperSize / 2 - dragX) * (canvasSize / wrapperSize);
-        const cropY = (displayedHeight / 2 - wrapperSize / 2 - dragY) * (canvasSize / wrapperSize);
+        if (!originalImg) return;
+        downloadBtn.innerText = "PROCESSING...";
         
-        ctx.drawImage(imagePreview, 
-            -cropX, -cropY, 
-            displayedWidth * (canvasSize / wrapperSize), displayedHeight * (canvasSize / wrapperSize)
-        );
+        setTimeout(() => {
+            const canvas = document.createElement('canvas');
+            const size = 1024; // Square resolution
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
 
-        const link = document.createElement('a');
-        link.download = 'afrorakda-cropped-icon.png';
-        link.href = canvas.toDataURL();
-        link.click();
+            const wrapperSize = dropZone.offsetWidth;
+            const currentScale = baseScale * scale;
+            
+            // Calculate relative size on canvas
+            const drawW = originalImg.width * currentScale * (size / wrapperSize);
+            const drawH = originalImg.height * currentScale * (size / wrapperSize);
+            
+            // Calculate center offset on canvas
+            const centerX = size / 2 + (dragX * (size / wrapperSize));
+            const centerY = size / 2 + (dragY * (size / wrapperSize));
+
+            ctx.drawImage(originalImg, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+
+            const link = document.createElement('a');
+            link.download = `icon-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            downloadBtn.innerText = "DOWNLOAD PNG";
+        }, 100);
     }
-
-    // Drag & Drop
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
-    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--border)';
-        const file = e.dataTransfer.files[0];
-        if (file) loadImage(file);
-    });
 
     function showModal() { document.getElementById('modal').style.display = 'flex'; }
     function hideModal() { document.getElementById('modal').style.display = 'none'; }
