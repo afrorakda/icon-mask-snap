@@ -17,7 +17,8 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            --mask-color: rgba(255, 255, 255, 0.85);
+            --mask-color-empty: rgba(255, 255, 255, 0.85);
+            --mask-color-active: rgba(100, 100, 100, 0.7); /* 道具っぽいグレー */
         }
 
         body {
@@ -42,6 +43,7 @@
         h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
         .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
 
+        /* Preview Canvas = The Main Button */
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -50,10 +52,12 @@
             position: relative;
             overflow: hidden;
             border: 2px solid var(--border);
-            cursor: move;
+            cursor: pointer;
             touch-action: none;
             margin-bottom: 25px;
+            transition: border-color 0.2s;
         }
+        .preview-wrapper.has-image { cursor: move; border-color: var(--main); }
 
         #imagePreview {
             position: absolute;
@@ -69,7 +73,12 @@
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 10;
-            transition: background 0.2s;
+            transition: background 0.4s ease;
+            background: radial-gradient(circle, transparent 48%, var(--mask-color-empty) 48.5%);
+        }
+        .preview-wrapper.has-image .mask-overlay {
+            /* 写真が入ったら暗くする */
+            background: radial-gradient(circle, transparent 48%, var(--mask-color-active) 48.5%);
         }
 
         .controls-card {
@@ -116,28 +125,21 @@
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
-            margin-bottom: 5px;
-        }
-
-        .file-input-wrapper {
-            position: relative;
             margin-bottom: 15px;
         }
-        .file-input-btn {
+
+        /* Sub Button for Changing Photo */
+        .change-btn {
             width: 100%;
-            padding: 18px;
-            background: var(--main);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius);
+            padding: 12px;
+            background: #fff;
+            color: var(--main);
+            border: 2px solid var(--main);
+            border-radius: 12px;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             cursor: pointer;
-        }
-        input[type="file"] {
-            position: absolute;
-            left: 0; top: 0; width: 100%; height: 100%;
-            opacity: 0; cursor: pointer;
+            display: none;
         }
 
         #placeholderText {
@@ -149,6 +151,7 @@
             color: #bbb;
             font-weight: 700;
             pointer-events: none;
+            transition: opacity 0.3s;
         }
 
         footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
@@ -174,36 +177,37 @@
             border-radius: var(--radius); text-align: left; position: relative;
         }
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; }
+
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Drag & zoom to check your safe area.</p>
+    <p class="subtitle">Tap preview to load photo.</p>
 
-    <div class="file-input-wrapper">
-        <button class="file-input-btn">Upload Photo</button>
-        <input type="file" id="fileInput" accept="image/*">
-    </div>
+    <input type="file" id="fileInput" accept="image/*">
 
-    <div class="preview-wrapper" id="dropZone">
+    <div class="preview-wrapper" id="dropZone" onclick="triggerUpload()">
         <img id="imagePreview" src="">
         <div id="maskOverlay" class="mask-overlay"></div>
-        <p id="placeholderText">Drop or Select Photo</p>
+        <p id="placeholderText">Tap to Select Photo<br><span style="font-size:0.8rem; opacity:0.7;">(or Drop here)</span></p>
     </div>
 
     <div class="controls-card">
         <span class="control-label">Mask Type</span>
         <div class="sns-selector">
-            <button class="sns-btn active" onclick="setMask('circle', this)">Circle (General)</button>
-            <button class="sns-btn" onclick="setMask('x', this)">X / Twitter</button>
-            <button class="sns-btn" onclick="setMask('ig', this)">Instagram</button>
-            <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
+            <button class="sns-btn active" data-type="circle" onclick="setMask('circle', this)">Circle</button>
+            <button class="sns-btn" data-type="x" onclick="setMask('x', this)">X / Twitter</button>
+            <button class="sns-btn" data-type="ig" onclick="setMask('ig', this)">Instagram</button>
+            <button class="sns-btn" data-type="yt" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <span class="control-label">Zoom</span>
+        <span class="control-label">Zoom Control</span>
         <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
+
+        <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
     </div>
 
     <div class="footer-btns">
@@ -234,6 +238,7 @@
     const zoomScale = document.getElementById('zoomScale');
     const dropZone = document.getElementById('dropZone');
     const maskOverlay = document.getElementById('maskOverlay');
+    const changeBtn = document.getElementById('changeBtn');
 
     let scale = 1;
     let baseScale = 1;
@@ -241,8 +246,11 @@
     let dragY = 0;
     let isDragging = false;
     let startX, startY;
+    let currentMaskType = 'circle';
 
-    setMask('circle', document.querySelector('.sns-btn.active'));
+    function triggerUpload() {
+        fileInput.click();
+    }
 
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -268,7 +276,9 @@
                 
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
-                placeholderText.style.display = 'none';
+                placeholderText.style.opacity = '0';
+                changeBtn.style.display = 'block';
+                dropZone.classList.add('has-image');
                 
                 updateTransform();
             };
@@ -277,6 +287,7 @@
         reader.readAsDataURL(file);
     }
 
+    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -312,11 +323,11 @@
 
     function updateTransform() {
         const currentScale = baseScale * scale;
-        // Central position + drag offset
         imagePreview.style.transform = `translate(-50%, -50%) translate(${dragX}px, ${dragY}px) scale(${currentScale})`;
     }
 
     function setMask(type, btn) {
+        currentMaskType = type;
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -325,14 +336,17 @@
         if (type === 'ig') radius = "47.5%";
         if (type === 'yt') radius = "45.5%";
 
-        maskOverlay.style.background = `radial-gradient(circle, transparent ${radius}, var(--mask-color) ${radius})`;
+        // Update the gradient with current radius
+        const color = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
+        maskOverlay.style.background = `radial-gradient(circle, transparent ${radius}, ${color} ${radius})`;
     }
 
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
-    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
+    // Drag & Drop Support
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#e8e8e8'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.background = '#f0f0f0'; });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.style.borderColor = 'var(--border)';
+        dropZone.style.background = '#f0f0f0';
         const file = e.dataTransfer.files[0];
         if (file) loadImage(file);
     });
