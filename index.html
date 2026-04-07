@@ -17,7 +17,7 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            --success: #2ecc71;
+            /* 鮮やかなグリーンは廃止 */
             --mask-color-empty: rgba(255, 255, 255, 0.85);
             --mask-color-active: rgba(100, 100, 100, 0.7);
         }
@@ -145,18 +145,26 @@
             cursor: pointer;
         }
 
+        /* 修正：ダウンロードボタンのデザイン（マスクタイプと同じ仕様） */
         .download-btn {
             width: 100%;
             padding: 18px;
-            background: var(--success);
-            color: #fff;
-            border: none;
+            background: #fff;
+            border: 2px solid var(--main);
+            color: var(--main);
             border-radius: var(--radius);
             font-weight: 800;
             font-size: 1.1rem;
             cursor: pointer;
             display: none;
             margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        /* 修正：アクティブ時の色反転（道具感） */
+        .download-btn:active {
+            background: var(--main);
+            color: #fff;
+            transform: scale(0.98);
         }
 
         .save-guide {
@@ -381,6 +389,9 @@
 
     function downloadCropped() {
         if (!originalImg) return;
+        // 修正：PROCESSING時の色反転も反映
+        downloadBtn.style.background = 'var(--main)';
+        downloadBtn.style.color = '#fff';
         downloadBtn.innerText = "PROCESSING...";
         
         setTimeout(() => {
@@ -408,9 +419,22 @@
             link.href = canvas.toDataURL('image/png');
             link.click();
             
+            // 修正：元に戻す
+            downloadBtn.style.background = '#fff';
+            downloadBtn.style.color = 'var(--main)';
             downloadBtn.innerText = "DOWNLOAD PNG";
         }, 100);
     }
+
+    // Drag & Drop
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border)';
+        const file = e.dataTransfer.files[0];
+        if (file) loadImage(file);
+    });
 
     function showModal() { document.getElementById('modal').style.display = 'flex'; }
     function hideModal() { document.getElementById('modal').style.display = 'none'; }
