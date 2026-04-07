@@ -17,7 +17,6 @@
             --input-bg: #fafafa;
             --radius: 15px;
             --text-gray: #666;
-            /* 鮮やかなグリーンは廃止 */
             --mask-color-empty: rgba(255, 255, 255, 0.85);
             --mask-color-active: rgba(100, 100, 100, 0.7);
         }
@@ -55,9 +54,10 @@
             cursor: pointer;
             touch-action: none;
             margin-bottom: 25px;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
-        .preview-wrapper.has-image { cursor: move; border-color: var(--main); }
+        .preview-wrapper.loaded { border-color: var(--main); box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+        .preview-wrapper.has-image { cursor: move; }
 
         #imagePreview {
             position: absolute;
@@ -66,6 +66,7 @@
             transform-origin: center center;
             will-change: transform;
             display: none;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .mask-overlay {
@@ -136,22 +137,38 @@
             font-weight: 800;
             cursor: pointer;
             color: var(--main);
+            display: none;
         }
 
         input[type="range"] {
             width: 100%;
             accent-color: var(--main);
-            margin-bottom: 25px;
             cursor: pointer;
+            margin-bottom: 25px;
         }
 
-        /* 修正：ダウンロードボタンのデザイン（マスクタイプと同じ仕様） */
+        .change-btn {
+            width: 100%;
+            padding: 12px;
+            background: #fff;
+            color: var(--main);
+            border: 2px solid var(--main);
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: none;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        .change-btn:active { background: var(--accent); }
+
         .download-btn {
             width: 100%;
             padding: 18px;
             background: #fff;
-            border: 2px solid var(--main);
             color: var(--main);
+            border: 2px solid var(--main);
             border-radius: var(--radius);
             font-weight: 800;
             font-size: 1.1rem;
@@ -160,11 +177,9 @@
             margin-bottom: 12px;
             transition: all 0.2s;
         }
-        /* 修正：アクティブ時の色反転（道具感） */
         .download-btn:active {
             background: var(--main);
             color: #fff;
-            transform: scale(0.98);
         }
 
         .save-guide {
@@ -173,6 +188,7 @@
             line-height: 1.5;
             padding: 0 5px;
             display: none;
+            text-align: center;
         }
 
         #placeholderText {
@@ -184,6 +200,7 @@
             color: #bbb;
             font-weight: 700;
             pointer-events: none;
+            line-height: 1.4;
         }
 
         footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
@@ -217,20 +234,20 @@
 
 <div class="container">
     <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Tap preview to check your safe area.</p>
+    <p class="subtitle">Verify and crop your icon perfectly.</p>
 
     <input type="file" id="fileInput" accept="image/*">
 
     <div class="preview-wrapper" id="dropZone" onclick="triggerUpload()">
         <img id="imagePreview" src="">
         <div id="maskOverlay" class="mask-overlay"></div>
-        <p id="placeholderText">Tap to Select Photo</p>
+        <p id="placeholderText">Tap to Select Photo<br><span style="font-size:0.8rem; opacity:0.7;">(or Drop here)</span></p>
     </div>
 
     <div class="controls-card">
         <div class="zoom-header">
             <span class="control-label" style="margin:0;">Zoom Control</span>
-            <button class="reset-btn" id="resetBtn" onclick="resetView()" style="display:none;">Reset View</button>
+            <button class="reset-btn" id="resetBtn" onclick="resetView()">Reset View</button>
         </div>
         <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
 
@@ -242,6 +259,7 @@
             <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
+        <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
         <button id="downloadBtn" class="download-btn" onclick="downloadCropped()">DOWNLOAD PNG</button>
         <div id="saveGuide" class="save-guide">
             🍏 <b>iPhone:</b> Check "Files" app (Downloads).<br>
@@ -277,6 +295,7 @@
     const zoomScale = document.getElementById('zoomScale');
     const dropZone = document.getElementById('dropZone');
     const maskOverlay = document.getElementById('maskOverlay');
+    const changeBtn = document.getElementById('changeBtn');
     const resetBtn = document.getElementById('resetBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const saveGuide = document.getElementById('saveGuide');
@@ -304,6 +323,7 @@
                 originalImg = img;
                 const containerSize = dropZone.offsetWidth;
                 
+                // Reset states
                 scale = 1;
                 zoomScale.value = 1;
                 dragX = 0;
@@ -315,12 +335,16 @@
                 
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
-                placeholderText.style.display = 'none';
+                placeholderText.style.opacity = '0';
+                
+                // Show hidden UI
+                changeBtn.style.display = 'block';
                 resetBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
                 saveGuide.style.display = 'block';
-                dropZone.classList.add('has-image');
+                dropZone.classList.add('has-image', 'loaded');
                 
+                setTimeout(() => dropZone.classList.remove('loaded'), 500);
                 updateTransform();
             };
             img.src = e.target.result;
@@ -336,6 +360,7 @@
         updateTransform();
     }
 
+    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -389,14 +414,12 @@
 
     function downloadCropped() {
         if (!originalImg) return;
-        // 修正：PROCESSING時の色反転も反映
-        downloadBtn.style.background = 'var(--main)';
-        downloadBtn.style.color = '#fff';
+        const originalLabel = downloadBtn.innerText;
         downloadBtn.innerText = "PROCESSING...";
         
         setTimeout(() => {
             const canvas = document.createElement('canvas');
-            const size = 1024; // Square resolution
+            const size = 1024; // Standard high resolution square
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
@@ -414,15 +437,16 @@
 
             ctx.drawImage(originalImg, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
 
-            const link = document.createElement('a');
-            link.download = `icon-${Date.now()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            try {
+                const link = document.createElement('a');
+                link.download = `icon-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert("Download failed. Please try a smaller image.");
+            }
             
-            // 修正：元に戻す
-            downloadBtn.style.background = '#fff';
-            downloadBtn.style.color = 'var(--main)';
-            downloadBtn.innerText = "DOWNLOAD PNG";
+            downloadBtn.innerText = originalLabel;
         }, 100);
     }
 
