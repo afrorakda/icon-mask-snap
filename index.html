@@ -42,7 +42,6 @@
         h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
         .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
 
-        /* Preview Canvas */
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -58,7 +57,9 @@
 
         #imagePreview {
             position: absolute;
-            transform-origin: 0 0; /* Important for coordinate calc */
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
             will-change: transform;
             display: none;
         }
@@ -236,12 +237,11 @@
 
     let scale = 1;
     let baseScale = 1;
-    let posX = 0;
-    let posY = 0;
+    let dragX = 0;
+    let dragY = 0;
     let isDragging = false;
     let startX, startY;
 
-    // Set Initial Mask
     setMask('circle', document.querySelector('.sns-btn.active'));
 
     fileInput.addEventListener('change', (e) => {
@@ -257,11 +257,11 @@
                 const wrapperRect = dropZone.getBoundingClientRect();
                 const containerSize = wrapperRect.width;
                 
-                // Reset states
                 scale = 1;
                 zoomScale.value = 1;
+                dragX = 0;
+                dragY = 0;
                 
-                // Calculate scale to fit "Short Side"
                 const scaleW = containerSize / img.width;
                 const scaleH = containerSize / img.height;
                 baseScale = Math.max(scaleW, scaleH);
@@ -270,10 +270,6 @@
                 imagePreview.style.display = 'block';
                 placeholderText.style.display = 'none';
                 
-                // Initial Center Position
-                posX = (containerSize - (img.width * baseScale)) / 2;
-                posY = (containerSize - (img.height * baseScale)) / 2;
-                
                 updateTransform();
             };
             img.src = e.target.result;
@@ -281,7 +277,6 @@
         reader.readAsDataURL(file);
     }
 
-    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -294,8 +289,8 @@
         isDragging = true;
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-        startX = clientX - posX;
-        startY = clientY - posY;
+        startX = clientX - dragX;
+        startY = clientY - dragY;
     }
 
     function drag(e) {
@@ -303,8 +298,8 @@
         if (e.cancelable) e.preventDefault();
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        posX = clientX - startX;
-        posY = clientY - startY;
+        dragX = clientX - startX;
+        dragY = clientY - startY;
         updateTransform();
     }
 
@@ -317,15 +312,15 @@
 
     function updateTransform() {
         const currentScale = baseScale * scale;
-        imagePreview.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
+        // Central position + drag offset
+        imagePreview.style.transform = `translate(-50%, -50%) translate(${dragX}px, ${dragY}px) scale(${currentScale})`;
     }
 
     function setMask(type, btn) {
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // Professional Safe Area Ratios
-        let radius = "48%"; // Standard
+        let radius = "48%"; 
         if (type === 'x') radius = "46.5%";
         if (type === 'ig') radius = "47.5%";
         if (type === 'yt') radius = "45.5%";
@@ -333,7 +328,6 @@
         maskOverlay.style.background = `radial-gradient(circle, transparent ${radius}, var(--mask-color) ${radius})`;
     }
 
-    // Drag & Drop UI feedback
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
     dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
     dropZone.addEventListener('drop', (e) => {
