@@ -14,8 +14,8 @@
             --accent: #eee;
             --input-bg: #fafafa;
             --radius: 15px;
-            --mask-color-empty: rgba(255, 255, 255, 0.9);
-            --mask-color-active: rgba(0, 0, 0, 0.6);
+            --mask-empty: rgba(255, 255, 255, 0.9);
+            --mask-active: rgba(0, 0, 0, 0.75);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,21 +36,18 @@
         .container { width: 100%; max-width: 400px; display: flex; flex-direction: column; flex-grow: 1; }
 
         header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 25px; 
-            width: 100%;
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 25px; width: 100%;
         }
 
-        h1 { font-size: 1.4rem; font-weight: 900; letter-spacing: -1px; margin: 0; }
+        h1 { font-size: 1.4rem; font-weight: 900; letter-spacing: -1.5px; margin: 0; }
 
         .hub-link {
             text-decoration: none; font-size: 0.8rem; font-weight: 800; color: var(--main);
-            background: var(--accent); padding: 8px 14px; border-radius: 10px;
+            background: var(--accent); padding: 8px 14px; border-radius: 12px;
         }
 
-        .preview-wrapper {
+        .viewer-box {
             width: 100%;
             aspect-ratio: 1 / 1;
             background: var(--input-bg);
@@ -61,6 +58,9 @@
             cursor: pointer;
             touch-action: none;
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #imagePreview {
@@ -69,84 +69,84 @@
             transform-origin: center center;
             display: none;
             will-change: transform;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .mask-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 10;
-            background: radial-gradient(circle, transparent 48%, var(--mask-color-empty) 48.5%);
+            pointer-events: none; z-index: 10;
+            background: radial-gradient(circle, transparent 48%, var(--mask-empty) 48.5%);
+            transition: background 0.2s ease;
         }
-        .preview-wrapper.has-image .mask-overlay {
-            background: radial-gradient(circle, transparent 48%, var(--mask-color-active) 48.5%);
-        }
-
-        #placeholderText {
-            position: absolute; width: 100%; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); color: #bbb;
-            font-weight: 800; font-size: 0.9rem; pointer-events: none;
+        .viewer-box.has-image .mask-overlay {
+            background: radial-gradient(circle, transparent 48%, var(--mask-active) 48.5%);
         }
 
-        .controls-card {
+        #placeholder {
+            color: #bbb; font-weight: 900; font-size: 1rem; letter-spacing: -0.5px;
+            text-align: center; line-height: 1.4;
+        }
+
+        .controls {
             background: var(--input-bg);
             padding: 20px;
             border-radius: var(--radius);
             margin-bottom: 20px;
         }
 
-        .control-label {
-            display: block; font-size: 0.7rem; font-weight: 900;
-            color: #999; text-transform: uppercase; margin-bottom: 10px;
-        }
-
-        .zoom-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .label { font-size: 0.7rem; font-weight: 900; color: #999; text-transform: uppercase; }
         
         #resetBtn {
-            background: var(--accent); border: none; padding: 4px 10px;
+            background: var(--main); border: none; padding: 4px 12px;
             border-radius: 8px; font-size: 0.65rem; font-weight: 800;
-            cursor: pointer; color: var(--main); display: none;
+            cursor: pointer; color: #fff; display: none;
         }
 
         input[type="range"] {
-            width: 100%; height: 6px; background: var(--accent);
-            border-radius: 5px; outline: none; -webkit-appearance: none; margin-bottom: 20px;
+            width: 100%; height: 8px; background: var(--accent);
+            border-radius: 10px; outline: none; -webkit-appearance: none; margin-bottom: 25px;
         }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: var(--main); border-radius: 50%; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; background: var(--main); border-radius: 50%; cursor: pointer; border: 4px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        .sns-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
-        .sns-btn {
-            background: #fff; border: 2px solid var(--accent); padding: 12px;
+        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .grid-item {
+            background: #fff; border: 2px solid var(--accent); padding: 14px;
             border-radius: 12px; font-size: 0.75rem; font-weight: 800;
             cursor: pointer; color: var(--main); -webkit-appearance: none;
+            transition: all 0.2s;
         }
-        .sns-btn.active { background: var(--main); color: #fff; border-color: var(--main); -webkit-text-fill-color: #fff; }
+        .grid-item.active { background: var(--main); color: #fff; border-color: var(--main); -webkit-text-fill-color: #fff; }
 
-        .main-btn {
-            -webkit-appearance: none; width: 100%; padding: 18px;
+        .format-selector { display: flex; gap: 5px; margin-bottom: 15px; background: var(--accent); padding: 4px; border-radius: 12px; }
+        .format-btn { flex: 1; border: none; background: transparent; padding: 8px; font-size: 0.7rem; font-weight: 900; border-radius: 8px; cursor: pointer; color: #888; }
+        .format-btn.active { background: #fff; color: var(--main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .action-btn {
+            -webkit-appearance: none; width: 100%; padding: 20px;
             background: var(--main); color: #fff; border: none;
             border-radius: var(--radius); font-weight: 900; font-size: 1.1rem;
             cursor: pointer; transition: transform 0.1s; margin-bottom: 10px;
             -webkit-text-fill-color: #fff; opacity: 1 !important;
         }
-        .main-btn:active { transform: scale(0.98); }
-        .sub-btn { background: #fff; color: var(--main); border: 2px solid var(--main); -webkit-text-fill-color: var(--main); }
+        .action-btn:active { transform: scale(0.97); }
+        .action-btn.secondary { background: #fff; color: var(--main); border: 2px solid var(--main); -webkit-text-fill-color: var(--main); margin-top: 5px; }
 
-        .footer-btns { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: auto; padding: 20px 0; }
+        .footer-btns { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: auto; padding: 30px 0; }
         .kofi-btn, .home-btn {
-            display: flex; align-items: center; justify-content: center; width: 100%; max-width: 320px;
-            padding: 14px; border-radius: var(--radius); font-weight: 800; font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center; width: 100%;
+            padding: 16px; border-radius: var(--radius); font-weight: 800; font-size: 0.9rem;
             text-decoration: none; border: none; cursor: pointer; -webkit-appearance: none;
         }
         .kofi-btn { background: var(--main); color: #fff; -webkit-text-fill-color: #fff; }
         .home-btn { background: var(--accent); color: var(--main); -webkit-text-fill-color: var(--main); }
 
-        footer { text-align: center; font-size: 0.7rem; color: #bbb; line-height: 1.6; padding-bottom: 10px; font-weight: 600; }
+        footer { text-align: center; font-size: 0.75rem; color: #bbb; line-height: 1.8; font-weight: 600; padding-bottom: 15px; }
         footer a { color: inherit; text-decoration: underline; }
 
-        /* Modal */
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }
-        .modal-content { background: #fff; width: 85%; max-width: 340px; padding: 30px; border-radius: var(--radius); position: relative; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+        .modal-content { background: #fff; width: 85%; max-width: 340px; padding: 35px; border-radius: var(--radius); position: relative; }
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; }
 
         input[type="file"] { display: none; }
@@ -162,29 +162,36 @@
 
     <input type="file" id="fileInput" accept="image/*">
 
-    <div class="preview-wrapper" id="dropZone" onclick="triggerUpload()">
+    <div class="viewer-box" id="dropZone" onclick="triggerUpload()">
         <img id="imagePreview" src="">
         <div id="maskOverlay" class="mask-overlay"></div>
-        <p id="placeholderText">Tap to Select Photo</p>
+        <div id="placeholder">TAP TO SELECT<br><span style="font-size:0.7rem; opacity:0.6;">JPG / PNG / WebP</span></div>
     </div>
 
-    <div class="controls-card">
-        <div class="zoom-header">
-            <span class="control-label">Zoom Control</span>
-            <button id="resetBtn" onclick="resetView()">Reset</button>
+    <div class="controls">
+        <div class="label-row">
+            <span class="label">Zoom Control</span>
+            <button id="resetBtn" onclick="resetView()">RESET</button>
         </div>
-        <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
+        <input type="range" id="zoomScale" min="0.5" max="4" step="0.01" value="1">
 
-        <span class="control-label">Mask Type</span>
-        <div class="sns-selector">
-            <button class="sns-btn active" onclick="setMask('circle', this)">Circle</button>
-            <button class="sns-btn" onclick="setMask('x', this)">X / Twitter</button>
-            <button class="sns-btn" onclick="setMask('ig', this)">Instagram</button>
-            <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
+        <span class="label">Mask Type</span>
+        <div class="btn-grid">
+            <button class="grid-item active" onclick="setMask('circle', this)">Circle</button>
+            <button class="grid-item" onclick="setMask('x', this)">X / Twitter</button>
+            <button class="grid-item" onclick="setMask('ig', this)">Instagram</button>
+            <button class="grid-item" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <button id="downloadBtn" class="main-btn" style="display:none;" onclick="downloadCropped()">DOWNLOAD PNG</button>
-        <button id="changeBtn" class="main-btn sub-btn" style="display:none;" onclick="triggerUpload()">Change Photo</button>
+        <span class="label">Export Format</span>
+        <div class="format-selector">
+            <button class="format-btn active" onclick="setFormat('png', this)">PNG</button>
+            <button class="format-btn" onclick="setFormat('jpeg', this)">JPG</button>
+            <button class="format-btn" onclick="setFormat('webp', this)">WebP</button>
+        </div>
+
+        <button id="downloadBtn" class="action-btn" style="display:none;" onclick="downloadCropped()">DOWNLOAD</button>
+        <button id="changeBtn" class="action-btn secondary" style="display:none;" onclick="triggerUpload()">Change Photo</button>
     </div>
 
     <div class="footer-btns">
@@ -194,25 +201,24 @@
 
     <footer id="dynamicFooter">
         No login / No tracking / No ads / Browser only<br>
-        <a href="https://afrorakda.com/privacy/">Privacy Policy</a><br>
-        afrorakda © 2026
+        <a href="https://afrorakda.com/privacy/">Privacy Policy</a> / afrorakda © 2026
     </footer>
 </div>
 
 <div id="modal" onclick="hideModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-x" onclick="hideModal()">×</span>
-        <h3 style="margin:0 0 15px 0; font-weight:900;">📱 Install</h3>
-        <p style="font-size:0.9rem; margin-bottom:15px; font-weight:600;">Add to your home screen.</p>
-        <p style="font-size:0.8rem; color:#666; line-height:1.5;">🍏 <strong>iPhone:</strong><br>Share > Add to Home Screen</p>
-        <p style="font-size:0.8rem; color:#666; line-height:1.5; margin-top:10px;">🤖 <strong>Android:</strong><br>Menu > Add to Home Screen</p>
+        <h3 style="margin:0 0 15px 0; font-weight:900; letter-spacing:-1px;">📱 Install</h3>
+        <p style="font-size:0.85rem; margin-bottom:20px; font-weight:600; color:#444;">Add Icon Mask Snap to your home screen.</p>
+        <p style="font-size:0.8rem; color:#666; line-height:1.6;">🍏 <strong>iPhone:</strong> Share > Add to Home Screen</p>
+        <p style="font-size:0.8rem; color:#666; line-height:1.6; margin-top:10px;">🤖 <strong>Android:</strong> Menu > Add to Home Screen</p>
     </div>
 </div>
 
 <script>
     const fileInput = document.getElementById('fileInput');
     const imagePreview = document.getElementById('imagePreview');
-    const placeholderText = document.getElementById('placeholderText');
+    const placeholder = document.getElementById('placeholder');
     const zoomScale = document.getElementById('zoomScale');
     const dropZone = document.getElementById('dropZone');
     const maskOverlay = document.getElementById('maskOverlay');
@@ -220,7 +226,7 @@
     const resetBtn = document.getElementById('resetBtn');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    let scale = 1, baseScale = 1, dragX = 0, dragY = 0;
+    let scale = 1, baseScale = 1, dragX = 0, dragY = 0, currentFormat = 'png';
     let isDragging = false, startX, startY, originalImg = null;
 
     function triggerUpload() { fileInput.click(); }
@@ -241,7 +247,7 @@
                 baseScale = Math.max(containerSize / img.width, containerSize / img.height);
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
-                placeholderText.style.display = 'none';
+                placeholder.style.display = 'none';
                 changeBtn.style.display = 'block';
                 resetBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
@@ -255,54 +261,57 @@
 
     function resetView() { scale = 1; zoomScale.value = 1; dragX = 0; dragY = 0; updateTransform(); }
 
-    dropZone.addEventListener('mousedown', startDrag);
-    dropZone.addEventListener('touchstart', startDrag, {passive: false});
-    window.addEventListener('mousemove', drag);
-    window.addEventListener('touchmove', drag, {passive: false});
-    window.addEventListener('mouseup', endDrag);
-    window.addEventListener('touchend', endDrag);
-
-    function startDrag(e) {
+    const startEvent = (e) => {
         if (!imagePreview.src) return;
         isDragging = true;
-        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-        startX = clientX - dragX; startY = clientY - dragY;
-    }
+        const pt = e.type.includes('touch') ? e.touches[0] : e;
+        startX = pt.clientX - dragX; startY = pt.clientY - dragY;
+    };
 
-    function drag(e) {
+    const moveEvent = (e) => {
         if (!isDragging) return;
         if (e.cancelable) e.preventDefault();
-        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        dragX = clientX - startX; dragY = clientY - startY;
+        const pt = e.type.includes('touch') ? e.touches[0] : e;
+        dragX = pt.clientX - startX; dragY = pt.clientY - startY;
         requestAnimationFrame(updateTransform);
-    }
+    };
 
-    function endDrag() { isDragging = false; }
+    dropZone.addEventListener('mousedown', startEvent);
+    dropZone.addEventListener('touchstart', startEvent, {passive: false});
+    window.addEventListener('mousemove', moveEvent);
+    window.addEventListener('touchmove', moveEvent, {passive: false});
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('touchend', () => isDragging = false);
 
     zoomScale.addEventListener('input', (e) => { scale = parseFloat(e.target.value); updateTransform(); });
 
     function updateTransform() {
         const currentScale = baseScale * scale;
-        imagePreview.style.transform = `translate(-50%, -50%) translate(${dragX}px, ${dragY}px) scale(${currentScale})`;
+        // translate3d for hardware acceleration
+        imagePreview.style.transform = `translate3d(-50%, -50%, 0) translate3d(${dragX}px, ${dragY}px, 0) scale(${currentScale})`;
     }
 
     function setMask(type, btn) {
-        document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.grid-item').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         let r = "48%"; 
         if (type === 'x') r = "46.5%";
         if (type === 'ig') r = "47.5%";
         if (type === 'yt') r = "45.5%";
-        const col = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
+        const col = imagePreview.src ? 'var(--mask-active)' : 'var(--mask-empty)';
         maskOverlay.style.background = `radial-gradient(circle, transparent ${r}, ${col} ${r})`;
+    }
+
+    function setFormat(fmt, btn) {
+        document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFormat = fmt;
     }
 
     function downloadCropped() {
         if (!originalImg) return;
         const canvas = document.createElement('canvas');
-        const size = 1024;
+        const size = 1200; // High quality output
         canvas.width = size; canvas.height = size;
         const ctx = canvas.getContext('2d');
         const wrapperSize = dropZone.offsetWidth;
@@ -311,10 +320,15 @@
         const drawH = originalImg.height * currentScale * (size / wrapperSize);
         const centerX = size / 2 + (dragX * (size / wrapperSize));
         const centerY = size / 2 + (dragY * (size / wrapperSize));
+        
+        ctx.fillStyle = currentFormat === 'jpeg' ? '#ffffff' : 'transparent';
+        ctx.fillRect(0, 0, size, size);
         ctx.drawImage(originalImg, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+        
+        const mime = `image/${currentFormat}`;
         const link = document.createElement('a');
-        link.download = `icon-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.download = `icon-${Date.now()}.${currentFormat === 'jpeg' ? 'jpg' : currentFormat}`;
+        link.href = canvas.toDataURL(mime, 0.9);
         link.click();
     }
 
