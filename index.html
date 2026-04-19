@@ -13,7 +13,7 @@
             --accent: #eee;
             --input-bg: #fafafa;
             --radius: 15px;
-            --mask-active: rgba(0, 0, 0, 0.85);
+            --mask-black: #000;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -24,7 +24,7 @@
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             padding: calc(env(safe-area-inset-top, 20px) + 10px) 20px 0;
-            overflow-x: hidden; overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .fridge-container { 
@@ -54,13 +54,20 @@
             background: radial-gradient(circle, transparent 48%, var(--bg) 48.5%);
         }
         .viewer-box.has-image .mask-overlay {
-            background: radial-gradient(circle, transparent 48%, var(--mask-active) 48.5%);
+            background: radial-gradient(circle, transparent 48%, var(--mask-black) 48.5%);
         }
 
         #placeholder { color: #bbb; font-weight: 900; font-size: 1rem; text-align: center; }
 
         .controls { background: var(--input-bg); padding: 20px; border-radius: var(--radius); margin: 20px 0; }
-        .label { font-size: 0.7rem; font-weight: 900; color: #999; text-transform: uppercase; display: block; margin-bottom: 10px; }
+        
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .label { font-size: 0.7rem; font-weight: 900; color: #999; text-transform: uppercase; }
+        #resetBtn { 
+            background: var(--main); color: #fff; border: none; padding: 4px 10px; 
+            border-radius: 8px; font-size: 0.65rem; font-weight: 800; cursor: pointer;
+            display: none; -webkit-text-fill-color: #fff;
+        }
 
         .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
         .grid-item {
@@ -118,7 +125,10 @@
     <input type="file" id="fileInput" accept="image/*">
 
     <div class="controls">
-        <span class="label">Mask Type</span>
+        <div class="label-row">
+            <span class="label">Mask Type</span>
+            <button id="resetBtn" onclick="reset()">RESET</button>
+        </div>
         <div class="btn-grid">
             <button class="grid-item active" onclick="setMask('circle', this)">Circle</button>
             <button class="grid-item" onclick="setMask('x', this)">X / Twitter</button>
@@ -181,7 +191,6 @@
         reader.onload = event => {
             const tempImg = new Image();
             tempImg.onload = () => {
-                // 防護壁: 長辺2000pxへリサイズ
                 const canvas = document.createElement('canvas');
                 const max = 2000;
                 let w = tempImg.width, h = tempImg.height;
@@ -193,15 +202,13 @@
                 canvas.getContext('2d').drawImage(tempImg, 0, 0, w, h);
                 img = new Image();
                 img.onload = () => {
-                    scale = Math.max(dropZone.offsetWidth/img.width, dropZone.offsetHeight/img.height);
-                    x = (dropZone.offsetWidth - img.width * scale) / 2;
-                    y = (dropZone.offsetHeight - img.height * scale) / 2;
+                    reset();
                     preview.src = img.src; preview.style.display = 'block';
                     dropZone.classList.add('has-image');
                     document.getElementById('placeholder').style.display = 'none';
                     document.getElementById('downloadBtn').style.display = 'block';
                     document.getElementById('changeBtn').style.display = 'block';
-                    update();
+                    document.getElementById('resetBtn').style.display = 'block';
                 };
                 img.src = canvas.toDataURL('image/png');
             };
@@ -210,20 +217,30 @@
         reader.readAsDataURL(file);
     };
 
+    function reset() {
+        if(!img) return;
+        scale = Math.max(dropZone.offsetWidth/img.width, dropZone.offsetHeight/img.height);
+        x = (dropZone.offsetWidth - img.width * scale) / 2;
+        y = (dropZone.offsetHeight - img.height * scale) / 2;
+        update();
+    }
+
     function update() {
         preview.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
     }
 
-    // Touch Logic
     dropZone.ontouchstart = e => {
         if (e.touches.length === 2) {
             startDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             startScale = scale;
         } else {
             const now = Date.now();
-            if (now - lastTap < 300) { // Double Tap
-                scale = scale > 1.5 ? 1 : 2;
-                center();
+            if (now - lastTap < 300) {
+                scale *= 1.5;
+                const centerX = dropZone.offsetWidth / 2;
+                const centerY = dropZone.offsetHeight / 2;
+                x = centerX - (centerX - x) * 1.5;
+                y = centerY - (centerY - y) * 1.5;
             }
             lastTap = now;
             lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
@@ -234,19 +251,21 @@
         e.preventDefault();
         if (e.touches.length === 2) {
             const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-            scale = startScale * (dist / startDist);
+            const nextScale = startScale * (dist / startDist);
+            const ratio = nextScale / scale;
+            const centerX = dropZone.offsetWidth / 2;
+            const centerY = dropZone.offsetHeight / 2;
+            x = centerX - (centerX - x) * ratio;
+            y = centerY - (centerY - y) * ratio;
+            scale = nextScale;
         } else {
-            x += e.touches[0].pageX - lastX; y += e.touches[0].pageY - lastY;
+            // ドラッグ感度を 0.9 に調整して精密操作を支援
+            x += (e.touches[0].pageX - lastX) * 0.9; 
+            y += (e.touches[0].pageY - lastY) * 0.9;
             lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
         }
         update();
     };
-
-    function center() {
-        x = (dropZone.offsetWidth - img.width * scale) / 2;
-        y = (dropZone.offsetHeight - img.height * scale) / 2;
-        update();
-    }
 
     function setMask(type, btn) {
         document.querySelectorAll('.grid-item').forEach(b => b.classList.remove('active'));
@@ -254,7 +273,7 @@
         const overlay = document.getElementById('maskOverlay');
         let r = "48%";
         if (type === 'x') r = "46.5%"; if (type === 'ig') r = "47.5%"; if (type === 'yt') r = "45.5%";
-        overlay.style.background = `radial-gradient(circle, transparent ${r}, ${img ? 'var(--mask-active)' : 'var(--bg)'} ${r})`;
+        overlay.style.background = `radial-gradient(circle, transparent ${r}, ${img ? 'var(--mask-black)' : 'var(--bg)'} ${r})`;
     }
 
     function setFormat(f, btn) {
@@ -276,8 +295,8 @@
         const s = 1024; out.width = s; out.height = s;
         const ctx = out.getContext('2d');
         if (!transparent) { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); }
-        const r = s / dropZone.offsetWidth;
-        ctx.drawImage(img, x * r, y * r, img.width * scale * r, img.height * scale * r);
+        const ratio = s / dropZone.offsetWidth;
+        ctx.drawImage(img, x * ratio, y * ratio, img.width * scale * ratio, img.height * scale * ratio);
         const a = document.createElement('a');
         a.download = `icon-${Date.now()}.${format === 'jpeg' ? 'jpg' : format}`;
         a.href = out.toDataURL(`image/${format}`, 0.9);
