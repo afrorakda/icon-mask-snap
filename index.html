@@ -2,24 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Icon Mask Snap</title>
-    
     <link rel="icon" href="image_93.png">
     <link rel="apple-touch-icon" href="image_93.png">
 
     <style>
         :root {
-            --main: #333;
             --bg: #fff;
+            --main: #333;
             --accent: #eee;
-            --border: #ccc;
             --input-bg: #fafafa;
             --radius: 15px;
-            --text-gray: #666;
-            --mask-color-empty: rgba(255, 255, 255, 0.85);
-            --mask-color-active: rgba(100, 100, 100, 0.7);
+            --mask-color-empty: rgba(255, 255, 255, 0.9);
+            --mask-color-active: rgba(0, 0, 0, 0.6);
         }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -27,46 +26,49 @@
             color: var(--main);
             margin: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            padding: calc(env(safe-area-inset-top, 20px) + 10px) 20px env(safe-area-inset-bottom, 20px);
         }
 
-        .container {
+        .container { width: 100%; max-width: 400px; display: flex; flex-direction: column; flex-grow: 1; }
+
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 25px; 
             width: 100%;
-            max-width: 420px;
-            padding: 40px 20px;
-            box-sizing: border-box;
-            text-align: center;
         }
 
-        h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -1px; }
-        .subtitle { font-size: 1rem; color: var(--text-gray); font-weight: 600; margin-bottom: 30px; }
+        h1 { font-size: 1.4rem; font-weight: 900; letter-spacing: -1px; margin: 0; }
+
+        .hub-link {
+            text-decoration: none; font-size: 0.8rem; font-weight: 800; color: var(--main);
+            background: var(--accent); padding: 8px 14px; border-radius: 10px;
+        }
 
         .preview-wrapper {
             width: 100%;
             aspect-ratio: 1 / 1;
-            background: #f0f0f0;
+            background: var(--input-bg);
             border-radius: var(--radius);
             position: relative;
             overflow: hidden;
-            border: 2px solid var(--border);
+            border: 2px solid var(--accent);
             cursor: pointer;
             touch-action: none;
-            margin-bottom: 25px;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
         }
-        .preview-wrapper.loaded { border-color: var(--main); box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-        .preview-wrapper.has-image { cursor: move; }
 
         #imagePreview {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform-origin: center center;
-            will-change: transform;
             display: none;
-            image-rendering: -webkit-optimize-contrast;
+            will-change: transform;
         }
 
         .mask-overlay {
@@ -74,157 +76,77 @@
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 10;
-            transition: background 0.4s ease;
             background: radial-gradient(circle, transparent 48%, var(--mask-color-empty) 48.5%);
         }
         .preview-wrapper.has-image .mask-overlay {
             background: radial-gradient(circle, transparent 48%, var(--mask-color-active) 48.5%);
         }
 
+        #placeholderText {
+            position: absolute; width: 100%; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #bbb;
+            font-weight: 800; font-size: 0.9rem; pointer-events: none;
+        }
+
         .controls-card {
             background: var(--input-bg);
             padding: 20px;
             border-radius: var(--radius);
-            border: 1px solid var(--border);
-            margin-bottom: 25px;
-            text-align: left;
+            margin-bottom: 20px;
         }
 
         .control-label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: var(--text-gray);
-            text-transform: uppercase;
-            margin-bottom: 12px;
+            display: block; font-size: 0.7rem; font-weight: 900;
+            color: #999; text-transform: uppercase; margin-bottom: 10px;
         }
 
-        .sns-selector {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .sns-btn {
-            background: #fff;
-            border: 2px solid var(--border);
-            padding: 10px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: var(--main);
-        }
-        .sns-btn.active {
-            background: var(--main);
-            color: #fff;
-            border-color: var(--main);
-        }
-
-        .zoom-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        .reset-btn {
-            background: var(--accent);
-            border: none;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 800;
-            cursor: pointer;
-            color: var(--main);
-            display: none;
+        .zoom-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        
+        #resetBtn {
+            background: var(--accent); border: none; padding: 4px 10px;
+            border-radius: 8px; font-size: 0.65rem; font-weight: 800;
+            cursor: pointer; color: var(--main); display: none;
         }
 
         input[type="range"] {
-            width: 100%;
-            accent-color: var(--main);
-            cursor: pointer;
-            margin-bottom: 25px;
+            width: 100%; height: 6px; background: var(--accent);
+            border-radius: 5px; outline: none; -webkit-appearance: none; margin-bottom: 20px;
         }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; background: var(--main); border-radius: 50%; cursor: pointer; }
 
-        .change-btn {
-            width: 100%;
-            padding: 12px;
-            background: #fff;
-            color: var(--main);
-            border: 2px solid var(--main);
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 0.9rem;
-            cursor: pointer;
-            display: none;
-            margin-bottom: 15px;
-            transition: all 0.2s;
+        .sns-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+        .sns-btn {
+            background: #fff; border: 2px solid var(--accent); padding: 12px;
+            border-radius: 12px; font-size: 0.75rem; font-weight: 800;
+            cursor: pointer; color: var(--main); -webkit-appearance: none;
         }
-        .change-btn:active { background: var(--accent); }
+        .sns-btn.active { background: var(--main); color: #fff; border-color: var(--main); -webkit-text-fill-color: #fff; }
 
-        .download-btn {
-            width: 100%;
-            padding: 18px;
-            background: #fff;
-            color: var(--main);
-            border: 2px solid var(--main);
-            border-radius: var(--radius);
-            font-weight: 800;
-            font-size: 1.1rem;
-            cursor: pointer;
-            display: none;
-            margin-bottom: 12px;
-            transition: all 0.2s;
+        .main-btn {
+            -webkit-appearance: none; width: 100%; padding: 18px;
+            background: var(--main); color: #fff; border: none;
+            border-radius: var(--radius); font-weight: 900; font-size: 1.1rem;
+            cursor: pointer; transition: transform 0.1s; margin-bottom: 10px;
+            -webkit-text-fill-color: #fff; opacity: 1 !important;
         }
-        .download-btn:active {
-            background: var(--main);
-            color: #fff;
-        }
+        .main-btn:active { transform: scale(0.98); }
+        .sub-btn { background: #fff; color: var(--main); border: 2px solid var(--main); -webkit-text-fill-color: var(--main); }
 
-        .save-guide {
-            font-size: 0.75rem;
-            color: #888;
-            line-height: 1.5;
-            padding: 0 5px;
-            display: none;
-            text-align: center;
+        .footer-btns { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: auto; padding: 20px 0; }
+        .kofi-btn, .home-btn {
+            display: flex; align-items: center; justify-content: center; width: 100%; max-width: 320px;
+            padding: 14px; border-radius: var(--radius); font-weight: 800; font-size: 0.85rem;
+            text-decoration: none; border: none; cursor: pointer; -webkit-appearance: none;
         }
+        .kofi-btn { background: var(--main); color: #fff; -webkit-text-fill-color: #fff; }
+        .home-btn { background: var(--accent); color: var(--main); -webkit-text-fill-color: var(--main); }
 
-        #placeholderText {
-            position: absolute;
-            width: 100%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #bbb;
-            font-weight: 700;
-            pointer-events: none;
-            line-height: 1.4;
-        }
-
-        footer { margin-top: 60px; font-size: 12px; color: #777; line-height: 1.8; font-weight: 500; }
+        footer { text-align: center; font-size: 0.7rem; color: #bbb; line-height: 1.6; padding-bottom: 10px; font-weight: 600; }
         footer a { color: inherit; text-decoration: underline; }
-        .footer-btns { margin-top: 30px; }
-        .kofi-btn {
-            display: inline-block; background: var(--main); color: #fff;
-            padding: 14px 28px; border-radius: var(--radius);
-            text-decoration: none; font-weight: bold; font-size: 15px; margin-bottom: 15px;
-        }
-        .home-btn {
-            display: block; width: 70%; margin: 0 auto; background: var(--accent);
-            color: var(--main); border: none; padding: 12px;
-            border-radius: var(--radius); font-weight: 800; font-size: 14px; cursor: pointer;
-        }
 
-        #modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100;
-        }
-        .modal-content {
-            background: #fff; width: 85%; max-width: 340px; padding: 35px;
-            border-radius: var(--radius); text-align: left; position: relative;
-        }
+        /* Modal */
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: #fff; width: 85%; max-width: 340px; padding: 30px; border-radius: var(--radius); position: relative; }
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #888; cursor: pointer; }
 
         input[type="file"] { display: none; }
@@ -233,21 +155,23 @@
 <body>
 
 <div class="container">
-    <h1>Icon Mask Snap</h1>
-    <p class="subtitle">Verify and crop your icon perfectly.</p>
+    <header>
+        <h1>Icon Mask Snap</h1>
+        <a href="https://afrorakda.github.io/" class="hub-link">🏠 Hub</a>
+    </header>
 
     <input type="file" id="fileInput" accept="image/*">
 
     <div class="preview-wrapper" id="dropZone" onclick="triggerUpload()">
         <img id="imagePreview" src="">
         <div id="maskOverlay" class="mask-overlay"></div>
-        <p id="placeholderText">Tap to Select Photo<br><span style="font-size:0.8rem; opacity:0.7;">(or Drop here)</span></p>
+        <p id="placeholderText">Tap to Select Photo</p>
     </div>
 
     <div class="controls-card">
         <div class="zoom-header">
-            <span class="control-label" style="margin:0;">Zoom Control</span>
-            <button class="reset-btn" id="resetBtn" onclick="resetView()">Reset View</button>
+            <span class="control-label">Zoom Control</span>
+            <button id="resetBtn" onclick="resetView()">Reset</button>
         </div>
         <input type="range" id="zoomScale" min="0.5" max="3" step="0.01" value="1">
 
@@ -259,12 +183,8 @@
             <button class="sns-btn" onclick="setMask('yt', this)">YouTube</button>
         </div>
 
-        <button id="changeBtn" class="change-btn" onclick="triggerUpload()">Change Photo</button>
-        <button id="downloadBtn" class="download-btn" onclick="downloadCropped()">DOWNLOAD PNG</button>
-        <div id="saveGuide" class="save-guide">
-            🍏 <b>iPhone:</b> Check "Files" app (Downloads).<br>
-            🤖 <b>Android:</b> Check "Downloads" folder.
-        </div>
+        <button id="downloadBtn" class="main-btn" style="display:none;" onclick="downloadCropped()">DOWNLOAD PNG</button>
+        <button id="changeBtn" class="main-btn sub-btn" style="display:none;" onclick="triggerUpload()">Change Photo</button>
     </div>
 
     <div class="footer-btns">
@@ -272,19 +192,20 @@
         <button class="home-btn" onclick="showModal()">Add to Home Screen</button>
     </div>
 
-    <footer>
-        <div>No login / No tracking / No ads / Browser only</div>
-        <div><a href="https://afrorakda.com/privacy/">Privacy Policy</a> / afrorakda © 2026</div>
+    <footer id="dynamicFooter">
+        No login / No tracking / No ads / Browser only<br>
+        <a href="https://afrorakda.com/privacy/">Privacy Policy</a><br>
+        afrorakda © 2026
     </footer>
 </div>
 
 <div id="modal" onclick="hideModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-x" onclick="hideModal()">×</span>
-        <h3>📱 Install</h3>
-        <p>Add to your home screen.</p>
-        <p>🍏 <strong>iPhone (Safari):</strong><br>Tap Share, then Add to Home Screen.</p>
-        <p>🤖 <strong>Android (Chrome):</strong><br>Tap Menu (⋮), then Add to Home Screen.</p>
+        <h3 style="margin:0 0 15px 0; font-weight:900;">📱 Install</h3>
+        <p style="font-size:0.9rem; margin-bottom:15px; font-weight:600;">Add to your home screen.</p>
+        <p style="font-size:0.8rem; color:#666; line-height:1.5;">🍏 <strong>iPhone:</strong><br>Share > Add to Home Screen</p>
+        <p style="font-size:0.8rem; color:#666; line-height:1.5; margin-top:10px;">🤖 <strong>Android:</strong><br>Menu > Add to Home Screen</p>
     </div>
 </div>
 
@@ -298,15 +219,9 @@
     const changeBtn = document.getElementById('changeBtn');
     const resetBtn = document.getElementById('resetBtn');
     const downloadBtn = document.getElementById('downloadBtn');
-    const saveGuide = document.getElementById('saveGuide');
 
-    let scale = 1;
-    let baseScale = 1;
-    let dragX = 0;
-    let dragY = 0;
-    let isDragging = false;
-    let startX, startY;
-    let originalImg = null;
+    let scale = 1, baseScale = 1, dragX = 0, dragY = 0;
+    let isDragging = false, startX, startY, originalImg = null;
 
     function triggerUpload() { fileInput.click(); }
 
@@ -322,29 +237,15 @@
             img.onload = () => {
                 originalImg = img;
                 const containerSize = dropZone.offsetWidth;
-                
-                // Reset states
-                scale = 1;
-                zoomScale.value = 1;
-                dragX = 0;
-                dragY = 0;
-                
-                const scaleW = containerSize / img.width;
-                const scaleH = containerSize / img.height;
-                baseScale = Math.max(scaleW, scaleH);
-                
+                scale = 1; zoomScale.value = 1; dragX = 0; dragY = 0;
+                baseScale = Math.max(containerSize / img.width, containerSize / img.height);
                 imagePreview.src = img.src;
                 imagePreview.style.display = 'block';
-                placeholderText.style.opacity = '0';
-                
-                // Show hidden UI
+                placeholderText.style.display = 'none';
                 changeBtn.style.display = 'block';
                 resetBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
-                saveGuide.style.display = 'block';
-                dropZone.classList.add('has-image', 'loaded');
-                
-                setTimeout(() => dropZone.classList.remove('loaded'), 500);
+                dropZone.classList.add('has-image');
                 updateTransform();
             };
             img.src = e.target.result;
@@ -352,15 +253,8 @@
         reader.readAsDataURL(file);
     }
 
-    function resetView() {
-        scale = 1;
-        zoomScale.value = 1;
-        dragX = 0;
-        dragY = 0;
-        updateTransform();
-    }
+    function resetView() { scale = 1; zoomScale.value = 1; dragX = 0; dragY = 0; updateTransform(); }
 
-    // Drag Logic
     dropZone.addEventListener('mousedown', startDrag);
     dropZone.addEventListener('touchstart', startDrag, {passive: false});
     window.addEventListener('mousemove', drag);
@@ -373,8 +267,7 @@
         isDragging = true;
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-        startX = clientX - dragX;
-        startY = clientY - dragY;
+        startX = clientX - dragX; startY = clientY - dragY;
     }
 
     function drag(e) {
@@ -382,17 +275,13 @@
         if (e.cancelable) e.preventDefault();
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        dragX = clientX - startX;
-        dragY = clientY - startY;
+        dragX = clientX - startX; dragY = clientY - startY;
         requestAnimationFrame(updateTransform);
     }
 
     function endDrag() { isDragging = false; }
 
-    zoomScale.addEventListener('input', (e) => {
-        scale = parseFloat(e.target.value);
-        updateTransform();
-    });
+    zoomScale.addEventListener('input', (e) => { scale = parseFloat(e.target.value); updateTransform(); });
 
     function updateTransform() {
         const currentScale = baseScale * scale;
@@ -402,67 +291,46 @@
     function setMask(type, btn) {
         document.querySelectorAll('.sns-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
         let r = "48%"; 
         if (type === 'x') r = "46.5%";
         if (type === 'ig') r = "47.5%";
         if (type === 'yt') r = "45.5%";
-
         const col = imagePreview.src ? 'var(--mask-color-active)' : 'var(--mask-color-empty)';
         maskOverlay.style.background = `radial-gradient(circle, transparent ${r}, ${col} ${r})`;
     }
 
     function downloadCropped() {
         if (!originalImg) return;
-        const originalLabel = downloadBtn.innerText;
-        downloadBtn.innerText = "PROCESSING...";
-        
-        setTimeout(() => {
-            const canvas = document.createElement('canvas');
-            const size = 1024; // Standard high resolution square
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            const wrapperSize = dropZone.offsetWidth;
-            const currentScale = baseScale * scale;
-            
-            // Calculate relative size on canvas
-            const drawW = originalImg.width * currentScale * (size / wrapperSize);
-            const drawH = originalImg.height * currentScale * (size / wrapperSize);
-            
-            // Calculate center offset on canvas
-            const centerX = size / 2 + (dragX * (size / wrapperSize));
-            const centerY = size / 2 + (dragY * (size / wrapperSize));
-
-            ctx.drawImage(originalImg, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
-
-            try {
-                const link = document.createElement('a');
-                link.download = `icon-${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            } catch (err) {
-                alert("Download failed. Please try a smaller image.");
-            }
-            
-            downloadBtn.innerText = originalLabel;
-        }, 100);
+        const canvas = document.createElement('canvas');
+        const size = 1024;
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const wrapperSize = dropZone.offsetWidth;
+        const currentScale = baseScale * scale;
+        const drawW = originalImg.width * currentScale * (size / wrapperSize);
+        const drawH = originalImg.height * currentScale * (size / wrapperSize);
+        const centerX = size / 2 + (dragX * (size / wrapperSize));
+        const centerY = size / 2 + (dragY * (size / wrapperSize));
+        ctx.drawImage(originalImg, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+        const link = document.createElement('a');
+        link.download = `icon-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
     }
-
-    // Drag & Drop
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--main)'; });
-    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border)'; });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--border)';
-        const file = e.dataTransfer.files[0];
-        if (file) loadImage(file);
-    });
 
     function showModal() { document.getElementById('modal').style.display = 'flex'; }
     function hideModal() { document.getElementById('modal').style.display = 'none'; }
-</script>
 
+    async function loadFooter() {
+        try {
+            const res = await fetch('footer.json');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.footerHtml) document.getElementById('dynamicFooter').innerHTML = data.footerHtml;
+            }
+        } catch(e) {}
+    }
+    window.onload = loadFooter;
+</script>
 </body>
 </html>
